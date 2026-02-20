@@ -19,7 +19,7 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final yaml = loadYaml(configFile.readAsStringSync()) as YamlList;
+  final yaml = loadYaml(configFile.readAsStringSync()) as YamlMap;
   final entries = _parseSkillEntries(yaml);
 
   if (dryRun) {
@@ -68,33 +68,30 @@ void main(List<String> arguments) async {
 ///
 /// YAML構造:
 /// ```yaml
-/// - source: google-gemini/gemini-skills       # 全スキル
-/// - source: firebase/skills                    # 全スキル
-/// - source: vercel-labs/skills                 # 指定スキルのみ
-///   skills:
-///     - find-skills
+/// google-gemini/gemini-skills:         # 全スキル
+/// firebase/skills:                      # 全スキル
+/// vercel-labs/skills:                   # 指定スキルのみ
+///   - find-skills
 /// ```
-List<_SkillEntry> _parseSkillEntries(YamlList yaml) {
+List<_SkillEntry> _parseSkillEntries(YamlMap yaml) {
   final entries = <_SkillEntry>[];
 
-  for (final item in yaml) {
-    if (item is! YamlMap) {
-      logger.warning('不正なエントリをスキップ: $item');
+  for (final MapEntry(:key, :value) in yaml.entries) {
+    if (key is! String) {
+      logger.warning('不正なキーをスキップ: $key');
       continue;
     }
 
-    final source = item['source'] as String?;
-    if (source == null) {
-      logger.warning('source が未指定のエントリをスキップ: $item');
-      continue;
-    }
-
-    final skillsYaml = item['skills'];
+    final source = key;
     final skills = <String>[];
-    if (skillsYaml is YamlList) {
-      for (final skill in skillsYaml) {
+
+    if (value is YamlList) {
+      for (final skill in value) {
         skills.add(skill as String);
       }
+    } else if (value != null) {
+      logger.warning('不正な値をスキップ ($source): $value');
+      continue;
     }
 
     entries.add(_SkillEntry(source: source, skills: skills));

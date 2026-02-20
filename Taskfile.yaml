@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  setup-skills:
+    desc: skills.yaml に定義されたスキル一覧をインストールします
+    cmds:
+      - dart run bin/setup_skills.dart
+
+  setup-skills-dry:
+    desc: スキルインストールのコマンドを生成して確認します（実行はしません）
+    cmds:
+      - dart run bin/setup_skills.dart --dry-run

@@ -1,7 +1,7 @@
-# ソースのみ: 全スキルインストール
-# ソース + skills リスト: 指定スキルのみインストール
-- source: google-gemini/gemini-skills
-- source: firebase/skills
-- source: vercel-labs/skills
-  skills:
-    - find-skills
+# 全スキルインストールの場合はカラにする
+google-gemini/gemini-skills:
+firebase/skills:
+
+# 個別インストールの場合はリストを書く
+vercel-labs/skills:
+  - find-skills
