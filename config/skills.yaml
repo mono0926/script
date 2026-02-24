@@ -1,8 +1,11 @@
 # 全スキルインストールの場合は空リストにする
 google-gemini/gemini-skills:
 firebase/agent-skills:
+kevmoo/dash_skills:
 
 # 個別インストールの場合はリストを書く
+github/awesome-copilot:
+  - gh-cli
 vercel-labs/skills:
   - find-skills
 rodydavis/skills:
@@ -37,3 +40,6 @@ madteacher/mad-agents-skills:
   - flutter-navigation
   - flutter-networking
   - flutter-testing
+# 重複気味
+# jeffallan/claude-skills:
+#   - flutter-expert

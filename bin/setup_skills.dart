@@ -37,16 +37,16 @@ void main(List<String> arguments) async {
     }
 
     logger.info('\n📦 $commandStr');
-    final result = await Process.run(
+    final process = await Process.start(
       command.first,
       command.sublist(1),
       runInShell: true,
+      mode: ProcessStartMode.inheritStdio,
     );
 
-    stdout.write(result.stdout);
-    if (result.exitCode != 0) {
-      stderr.write(result.stderr);
-      logger.warning('⚠️  終了コード: ${result.exitCode}');
+    final exitCode = await process.exitCode;
+    if (exitCode != 0) {
+      logger.warning('⚠️  終了コード: $exitCode');
       hasError = true;
     }
   }

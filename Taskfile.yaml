@@ -3,6 +3,7 @@ version: '3'
 tasks:
   setup-skills:
     desc: skills.yaml に定義されたスキル一覧をインストールします
+    deps: [remove-all-skills]
     cmds:
       - dart run bin/setup_skills.dart
 
@@ -10,3 +11,7 @@ tasks:
     desc: スキルインストールのコマンドを生成して確認します（実行はしません）
     cmds:
       - dart run bin/setup_skills.dart --dry-run
+  remove-all-skills:
+    desc: 全てのスキルを削除します
+    cmds:
+      - npx skills remove --all --global -y
