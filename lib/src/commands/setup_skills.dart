@@ -58,26 +58,34 @@ class SetupSkillsCommand extends Command<int> {
     if (!dryRun) {
       logger.info('=== 既存のスキルを削除しています ===');
       for (final path in validPaths) {
-        final targetDir = path == null
-            ? _expandPath('~/.agents/skills')
-            : '${_expandPath(path)}/.agents/skills';
+        final workingDirectory = path != null ? _expandPath(path) : null;
+        final targetName = path ?? 'global';
+        final progress = logger.progress('🗑️  $targetName のスキルを削除中...');
 
-        final lockfilePath = path == null
-            ? _expandPath('~/.agents/.skill-lock.json')
-            : '${_expandPath(path)}/skills-lock.json';
+        final command = [
+          'npx',
+          'skills',
+          'remove',
+          '--all',
+          if (path == null) '--global',
+          '-y',
+        ];
 
-        final dir = Directory(targetDir);
-        final lockfile = File(lockfilePath);
+        final result = await Process.run(
+          command.first,
+          command.sublist(1),
+          runInShell: true,
+          workingDirectory: workingDirectory,
+        );
 
-        if (dir.existsSync()) {
-          logger.info('🗑️  $targetDir');
-          dir.deleteSync(recursive: true);
-        }
-        if (lockfile.existsSync()) {
-          lockfile.deleteSync();
+        if (result.exitCode == 0) {
+          progress.complete('🗑️  $targetName のスキルを削除しました');
+        } else {
+          progress.fail('🗑️  $targetName のスキル削除に失敗しました\n${result.stderr}');
+          hasError = true;
         }
       }
-      logger.success('削除完了\n');
+      logger.success('既存のスキル削除完了\n');
     }
 
     final futures = <Future<ProcessResult>>[];
