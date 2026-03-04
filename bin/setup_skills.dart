@@ -1,21 +1,35 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:script/logger.dart';
 import 'package:yaml/yaml.dart';
 
 /// skills.yaml を読み込み、各スキルをインストールするスクリプト。
 ///
 /// 使い方:
-///   dart run bin/setup_skills.dart          # 実行
-///   dart run bin/setup_skills.dart --dry-run # コマンド確認のみ
+///   dart run :setup_skills          # 実行
+///   dart run :setup_skills --dry-run # コマンド確認のみ
 void main(List<String> arguments) async {
   setupLogger();
 
-  final dryRun = arguments.contains('--dry-run');
+  final parser = ArgParser()
+    ..addFlag('help', abbr: 'h', negatable: false, help: 'ヘルプを表示します')
+    ..addFlag('dry-run', negatable: false, help: 'コマンド確認のみ行います');
+
+  final argResults = parser.parse(arguments);
+
+  if (argResults['help'] as bool) {
+    logger
+      ..info('使い方: dart run :setup_skills [オプション]\n')
+      ..info(parser.usage);
+    exit(0);
+  }
+
+  final dryRun = argResults['dry-run'] as bool;
 
   final configFile = File('config/skills.yaml');
   if (!configFile.existsSync()) {
-    logger.severe('config/skills.yaml が見つかりません');
+    logger.err('config/skills.yaml が見つかりません');
     exit(1);
   }
 
@@ -58,7 +72,7 @@ void main(List<String> arguments) async {
         dir.deleteSync(recursive: true);
       }
     }
-    logger.info('✅ 削除完了\n');
+    logger.success('削除完了\n');
   }
 
   Set<String> getSkillDirectories(String targetDir) {
@@ -111,7 +125,7 @@ void main(List<String> arguments) async {
 
     final exitCode = await process.exitCode;
     if (exitCode != 0) {
-      logger.warning('⚠️  終了コード: $exitCode');
+      logger.warn('⚠️  終了コード: $exitCode');
       hasError = true;
     } else if (!dryRun) {
       final afterDirs = getSkillDirectories(targetDir);
@@ -122,9 +136,9 @@ void main(List<String> arguments) async {
 
   if (!dryRun) {
     if (hasError) {
-      logger.warning('\n⚠️  一部のスキルでエラーが発生しました');
+      logger.warn('\n⚠️  一部のスキルでエラーが発生しました');
     } else {
-      logger.info('\n✅ 全てのスキルをインストール/確認しました');
+      logger.success('\n全てのスキルをインストール/確認しました');
     }
   }
 
@@ -198,7 +212,7 @@ List<_SkillEntry> _parseSkillEntries(YamlMap yaml) {
   if (yaml['global'] is YamlMap) {
     entries.addAll(_parseSourceMap(yaml['global'] as YamlMap, null));
   } else if (yaml['global'] != null) {
-    logger.warning('global が不正な形式です');
+    logger.warn('global が不正な形式です');
   }
 
   for (final MapEntry(key: pathStr, value: pathValue) in yaml.entries) {
@@ -207,7 +221,7 @@ List<_SkillEntry> _parseSkillEntries(YamlMap yaml) {
     }
 
     if (pathStr is! String || pathValue is! YamlMap) {
-      logger.warning('トップレベルの $pathStr が不正な形式です');
+      logger.warn('トップレベルの $pathStr が不正な形式です');
       continue;
     }
     entries.addAll(_parseSourceMap(pathValue, pathStr));
@@ -219,7 +233,7 @@ List<_SkillEntry> _parseSkillEntries(YamlMap yaml) {
 Iterable<_SkillEntry> _parseSourceMap(YamlMap map, String? targetPath) sync* {
   for (final MapEntry(:key, :value) in map.entries) {
     if (key is! String) {
-      logger.warning('不正なキーをスキップ: $key');
+      logger.warn('不正なキーをスキップ: $key');
       continue;
     }
 
@@ -231,7 +245,7 @@ Iterable<_SkillEntry> _parseSourceMap(YamlMap map, String? targetPath) sync* {
         skills.add(skill as String);
       }
     } else if (value != null) {
-      logger.warning('不正な値をスキップ ($source): $value');
+      logger.warn('不正な値をスキップ ($source): $value');
       continue;
     }
 

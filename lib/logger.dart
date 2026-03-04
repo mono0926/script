@@ -1,13 +1,7 @@
-import 'package:logging/logging.dart';
+import 'package:mason_logger/mason_logger.dart';
 
 /// アプリケーション共通の [Logger]。
-final logger = Logger('script');
+final logger = Logger();
 
-/// ログ出力の初期設定を行う。
-void setupLogger() {
-  Logger.root.level = Level.INFO;
-  Logger.root.onRecord.listen((record) {
-    // ignore: avoid_print
-    print(record.message);
-  });
-}
+/// (互換性のための空関数。必要であれば削除可能)
+void setupLogger() {}
