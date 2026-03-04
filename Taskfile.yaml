@@ -2,7 +2,7 @@ version: '3'
 
 tasks:
   setup-skills:
-    desc: skills.yaml に定義されたスキル一覧をインストールします
+    desc: 既存のスキルを全て削除した上で、skills.yaml に定義されたスキル一覧をインストールします
     cmds:
       - dart run bin/setup_skills.dart
 
