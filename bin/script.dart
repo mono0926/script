@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:script/logger.dart';
-import 'package:script/src/commands/setup_skills_command.dart';
+import 'package:script/src/commands/setup_skills.dart';
 
 Future<void> main(List<String> arguments) async {
   final runner = CommandRunner<int>(
