@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -41,7 +42,6 @@ void main(List<String> arguments) async {
   var hasError = false;
   final skippedPaths = <String>[];
   final validPaths = <String?>{null}; // null は global を表す
-  final installedSkillsPerEntry = <_SkillEntry, List<String>>{};
 
   // 事前に有効なパスを収集
   for (final entry in entries) {
@@ -64,25 +64,22 @@ void main(List<String> arguments) async {
           ? _expandPath('~/.agents/skills')
           : '${_expandPath(path)}/.agents/skills';
 
+      final lockfilePath = path == null
+          ? _expandPath('~/.agents/.skill-lock.json')
+          : '${_expandPath(path)}/skills-lock.json';
+
       final dir = Directory(targetDir);
+      final lockfile = File(lockfilePath);
+
       if (dir.existsSync()) {
         logger.info('🗑️  $targetDir');
         dir.deleteSync(recursive: true);
       }
+      if (lockfile.existsSync()) {
+        lockfile.deleteSync();
+      }
     }
     logger.success('削除完了\n');
-  }
-
-  Set<String> getSkillDirectories(String targetDir) {
-    final dir = Directory(targetDir);
-    if (!dir.existsSync()) {
-      return {};
-    }
-    return dir
-        .listSync()
-        .whereType<Directory>()
-        .map((e) => e.path.split(Platform.pathSeparator).last)
-        .toSet();
   }
 
   for (final entry in entries) {
@@ -103,12 +100,6 @@ void main(List<String> arguments) async {
       continue;
     }
 
-    final targetDir = entry.targetPath == null
-        ? _expandPath('~/.agents/skills')
-        : '${_expandPath(entry.targetPath!)}/.agents/skills';
-
-    final beforeDirs = dryRun ? <String>{} : getSkillDirectories(targetDir);
-
     logger.info(
       '\n📦 $commandStr'
       '${workingDirectory != null ? ' (in ${entry.targetPath})' : ''}',
@@ -125,10 +116,6 @@ void main(List<String> arguments) async {
     if (exitCode != 0) {
       logger.warn('⚠️  終了コード: $exitCode');
       hasError = true;
-    } else if (!dryRun) {
-      final afterDirs = getSkillDirectories(targetDir);
-      final newSkills = afterDirs.difference(beforeDirs).toList()..sort();
-      installedSkillsPerEntry[entry] = newSkills;
     }
   }
 
@@ -143,32 +130,45 @@ void main(List<String> arguments) async {
   if (!dryRun) {
     logger.info('\n=== インストール結果一覧 ===');
 
-    final groupedByPath = <String?, List<_SkillEntry>>{};
-    for (final entry in entries) {
-      if (installedSkillsPerEntry.containsKey(entry)) {
-        groupedByPath.putIfAbsent(entry.targetPath, () => []).add(entry);
-      }
-    }
-
     for (final path in validPaths) {
       final targetName = path ?? 'global';
-      final targetEntries = groupedByPath[path] ?? [];
+      logger.info('📍 $targetName:');
 
-      if (targetEntries.isNotEmpty) {
-        logger.info('📍 $targetName:');
-        for (final entry in targetEntries) {
-          final skills = installedSkillsPerEntry[entry]!;
-          if (skills.isEmpty) {
-            logger.info('  - ${entry.source} (インストールされたスキルはありません)');
-          } else {
-            logger.info('  - ${entry.source}');
-            for (final skill in skills) {
-              logger.info('    - $skill');
-            }
+      final lockfilePath = path == null
+          ? _expandPath('~/.agents/.skill-lock.json')
+          : '${_expandPath(path)}/skills-lock.json';
+      final lockfile = File(lockfilePath);
+      final skillsPerSource = <String, List<String>>{};
+
+      if (lockfile.existsSync()) {
+        try {
+          final content = lockfile.readAsStringSync();
+          final json = jsonDecode(content) as Map<String, dynamic>;
+          final skills = json['skills'] as Map<String, dynamic>? ?? {};
+
+          for (final entry in skills.entries) {
+            final skillName = entry.key;
+            final skillData = entry.value as Map<String, dynamic>;
+            final source = skillData['source'] as String? ?? 'unknown';
+
+            skillsPerSource.putIfAbsent(source, () => []).add(skillName);
+          }
+        } catch (e) {
+          logger.warn('    ⚠️  ロックファイルのパースに失敗しました: $lockfilePath ($e)');
+        }
+      }
+
+      if (skillsPerSource.isEmpty) {
+        logger.info('  - (インストールされたスキルはありません)');
+      } else {
+        final sources = skillsPerSource.keys.toList()..sort();
+        for (final source in sources) {
+          logger.info('  - $source');
+          final skills = skillsPerSource[source]!..sort();
+          for (final skill in skills) {
+            logger.info('    - $skill');
           }
         }
-      } else {
-        logger.info('📍 $targetName: (インストールされたスキルはありません)');
       }
     }
   }
