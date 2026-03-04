@@ -82,6 +82,8 @@ void main(List<String> arguments) async {
     logger.success('削除完了\n');
   }
 
+  final futures = <Future<ProcessResult>>[];
+
   for (final entry in entries) {
     if (entry.targetPath != null && skippedPaths.contains(entry.targetPath)) {
       continue;
@@ -101,21 +103,35 @@ void main(List<String> arguments) async {
     }
 
     logger.info(
-      '\n📦 $commandStr'
+      '📦 $commandStr'
       '${workingDirectory != null ? ' (in ${entry.targetPath})' : ''}',
     );
-    final process = await Process.start(
-      command.first,
-      command.sublist(1),
-      runInShell: true,
-      mode: ProcessStartMode.inheritStdio,
-      workingDirectory: workingDirectory,
-    );
 
-    final exitCode = await process.exitCode;
-    if (exitCode != 0) {
-      logger.warn('⚠️  終了コード: $exitCode');
-      hasError = true;
+    futures.add(
+      Process.run(
+        command.first,
+        command.sublist(1),
+        runInShell: true,
+        workingDirectory: workingDirectory,
+      ),
+    );
+  }
+
+  if (!dryRun) {
+    logger.info('\n⏳ インストールを実行中...');
+    final results = await Future.wait(futures);
+
+    for (final result in results) {
+      if (result.stdout.toString().isNotEmpty) {
+        logger.info((result.stdout as String).trim());
+      }
+      if (result.stderr.toString().isNotEmpty) {
+        logger.warn((result.stderr as String).trim());
+      }
+      if (result.exitCode != 0) {
+        logger.warn('⚠️  終了コード: ${result.exitCode}');
+        hasError = true;
+      }
     }
   }
 
