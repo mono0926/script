@@ -116,8 +116,9 @@ class SetupSkillsCommand extends Command<int> {
     }
 
     if (!dryRun) {
-      logger.info('\n⏳ インストールを実行中...');
+      final progress = logger.progress('インストールを実行中...');
       final results = await Future.wait(futures);
+      progress.complete('インストール処理が完了しました');
 
       for (final result in results) {
         if (result.stdout.toString().isNotEmpty) {

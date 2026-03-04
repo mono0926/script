@@ -1,5 +1,6 @@
 global:
   # 全スキルインストールの場合は空リストにする
+  mono0926/skills:
   google-gemini/gemini-skills:
   firebase/agent-skills:
   kevmoo/dash_skills:

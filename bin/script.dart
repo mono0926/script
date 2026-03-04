@@ -1,34 +1,19 @@
+#!/usr/bin/env dart
+
 import 'dart:io';
 
-import 'package:args/command_runner.dart';
-import 'package:script/logger.dart';
-import 'package:script/src/commands/setup_skills.dart';
+import 'package:script/command_runner.dart';
 
 Future<void> main(List<String> arguments) async {
-  final runner = CommandRunner<int>(
-    'script',
-    '様々なスクリプトの置き場',
-  )..addCommand(SetupSkillsCommand());
+  final exitCode = await ScriptCommandRunner().run(arguments);
+  await flushThenExit(exitCode ?? 0);
+}
 
-  try {
-    final exitCode = await runner.run(arguments);
-    exit(exitCode ?? 0);
-  } on UsageException catch (e) {
-    logger
-      ..err(e.message)
-      ..info('')
-      ..info(e.usage);
-    exit(64); // EX_USAGE
-  } on Exception catch (e, stackTrace) {
-    logger
-      ..err(e.toString())
-      ..err(stackTrace.toString());
-    exit(1);
-    // ignore: avoid_catching_errors
-  } on Error catch (e, stackTrace) {
-    logger
-      ..err(e.toString())
-      ..err(stackTrace.toString());
-    exit(1);
-  }
+/// [status]をexitCodeに設定し、標準出力/標準エラーのフラッシュを待って終了するヘルパー
+Future<void> flushThenExit(int status) async {
+  exitCode = status;
+  await Future.wait<void>([
+    stdout.close(),
+    stderr.close(),
+  ]);
 }
