@@ -1,57 +1,63 @@
-# 全スキルインストールの場合は空リストにする
-google-gemini/gemini-skills:
-firebase/agent-skills:
-kevmoo/dash_skills:
-kazukinagata/shinkoku:
+global:
+  # 全スキルインストールの場合は空リストにする
+  google-gemini/gemini-skills:
+  firebase/agent-skills:
+  kevmoo/dash_skills:
 
-# 個別インストールの場合はリストを書く
-https://github.com/flutter/skills/tree/generate-skills:
-  - flutter-accessibility
-  - flutter-animation
-  - flutter-environment-setup-macos
-  - flutter-layout
-  - flutter-localization
-  - flutter-routing-and-navigation
-  - flutter-theming
-sickn33/antigravity-awesome-skills:
-  - typescript-expert
-github/awesome-copilot:
-  - gh-cli
-vercel-labs/skills:
-  - find-skills
-rodydavis/skills:
-  - flutter-control-and-screenshot
-anthropics/skills:
-  - frontend-design
-  - skill-creator
-nextlevelbuilder/ui-ux-pro-max-skill:
-  - ui-ux-pro-max
-better-auth/skills:
-  - better-auth-security-best-practices
-obra/superpowers:
-  - brainstorming
-  - test-driven-development
-  - using-superpowers
-  - verification-before-completion
-juparave/dotfiles:
-  - flutter-riverpod-expert
-wshobson/agents:
-  - api-design-principles
-  - nodejs-backend-patterns
-  - design-system-patterns
-  - mobile-android-design
-  - mobile-ios-design
-  - responsive-design
-madteacher/mad-agents-skills:
-  - dart-drift
-  - flutter-adaptive-ui
-  - flutter-animations
-  # - flutter-architecture
-  - flutter-drift
-  - flutter-internationalization
-  - flutter-navigation
-  - flutter-networking
-  - flutter-testing
-# 重複気味
-# jeffallan/claude-skills:
-#   - flutter-expert
+  # 個別インストールの場合はリストを書く
+  https://github.com/flutter/skills/tree/generate-skills:
+    - flutter-accessibility
+    - flutter-animation
+    - flutter-environment-setup-macos
+    - flutter-layout
+    - flutter-localization
+    - flutter-routing-and-navigation
+    - flutter-theming
+  sickn33/antigravity-awesome-skills:
+    - typescript-expert
+  github/awesome-copilot:
+    - gh-cli
+  vercel-labs/skills:
+    - find-skills
+  rodydavis/skills:
+    - flutter-control-and-screenshot
+  anthropics/skills:
+    - frontend-design
+    - skill-creator
+  nextlevelbuilder/ui-ux-pro-max-skill:
+    - ui-ux-pro-max
+  better-auth/skills:
+    - better-auth-security-best-practices
+  obra/superpowers:
+    - brainstorming
+    - test-driven-development
+    - using-superpowers
+    - verification-before-completion
+  juparave/dotfiles:
+    - flutter-riverpod-expert
+  wshobson/agents:
+    - api-design-principles
+    - nodejs-backend-patterns
+    - design-system-patterns
+    - mobile-android-design
+    - mobile-ios-design
+    - responsive-design
+  madteacher/mad-agents-skills:
+    - dart-drift
+    - flutter-adaptive-ui
+    - flutter-animations
+    # - flutter-architecture
+    - flutter-drift
+    - flutter-internationalization
+    - flutter-navigation
+    - flutter-networking
+    - flutter-testing
+  # 重複気味
+  # jeffallan/claude-skills:
+  #   - flutter-expert
+
+# --- パスごとの個別インストール (${HOME} または該当ディレクトリ配下) ---
+# プロジェクトごとにローカルでインストールしたいSkillを設定します。
+# 存在しないパスはエラーを出さずにスキップされます。
+~/Git/tax-return:
+  kazukinagata/shinkoku:
