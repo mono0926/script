@@ -1,4 +1,10 @@
 # 全スキルインストールの場合は空リストにする
+google-gemini/gemini-skills:
+firebase/agent-skills:
+kevmoo/dash_skills:
+kazukinagata/shinkoku:
+
+# 個別インストールの場合はリストを書く
 https://github.com/flutter/skills/tree/generate-skills:
   - flutter-accessibility
   - flutter-animation
@@ -7,12 +13,6 @@ https://github.com/flutter/skills/tree/generate-skills:
   - flutter-localization
   - flutter-routing-and-navigation
   - flutter-theming
-google-gemini/gemini-skills:
-firebase/agent-skills:
-kevmoo/dash_skills:
-kazukinagata/shinkoku:
-
-# 個別インストールの場合はリストを書く
 sickn33/antigravity-awesome-skills:
   - typescript-expert
 github/awesome-copilot:
