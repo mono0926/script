@@ -4,9 +4,9 @@ tasks:
   setup-skills:
     desc: 既存のスキルを全て削除した上で、skills.yaml に定義されたスキル一覧をインストールします
     cmds:
-      - dart run :setup_skills
+      - dart run bin/script.dart setup_skills
 
   setup-skills-dry:
     desc: スキルインストールのコマンドを生成して確認します（実行はしません）
     cmds:
-      - dart run :setup_skills --dry-run
+      - dart run bin/script.dart setup_skills --dry-run

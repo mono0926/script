@@ -11,14 +11,7 @@ Future<void> main(List<String> arguments) async {
   )..addCommand(SetupSkillsCommand());
 
   try {
-    // 既存のTaskfileの `dart run :setup_skills --dry-run` などと互換性を持たせるため
-    // arguments にコマンド名が含まれていなければ先頭に 'setup_skills' を付与する
-    final args =
-        arguments.isNotEmpty && runner.commands.keys.contains(arguments.first)
-        ? arguments
-        : ['setup_skills', ...arguments];
-
-    final exitCode = await runner.run(args);
+    final exitCode = await runner.run(arguments);
     exit(exitCode ?? 0);
   } on UsageException catch (e) {
     logger
