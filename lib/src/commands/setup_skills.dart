@@ -163,6 +163,16 @@ class SetupSkillsCommand extends Command<int> {
       final results = await Future.wait(futures);
 
       // --- Merge & Fix Locks via Output Parsing ---
+      // 注意: なぜ「並列処理が全て終わった後に .skill-lock.json を読み直すだけ」ではダメなのか
+      // `npx skills add` を複数プロセスで同時に実行すると、同一の .skill-lock.json への
+      // 書き込み競合 (Race Condition) が発生します。
+      // その結果、「一部のスキルが記録から抜け落ちる」「JSONファイル自体が破損する」といった
+      // クリティカルな問題が頻発します。
+      //
+      // この問題を回避しつつ並列処理の恩恵(高速化)を得るため、ファイルへの競合書き込みは
+      // いったん「壊れても仕方ない」と割り切り、プロセス実行時の標準出力(stdout)から
+      // 「実際にインストールに成功したスキル名」を正規表現で抽出しています。
+      // そして最後に、集約した完全な情報を競合のない安全な状態でファイルに1回だけ上書き(マージ)します。
       final afterLocks = <String?, Map<String, dynamic>>{};
       for (final path in validPaths) {
         afterLocks[path] = readLock(path);
