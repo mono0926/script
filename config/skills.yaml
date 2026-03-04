@@ -1,4 +1,12 @@
 # 全スキルインストールの場合は空リストにする
+https://github.com/flutter/skills/tree/generate-skills:
+  - flutter-accessibility
+  - flutter-animation
+  - flutter-environment-setup-macos
+  - flutter-layout
+  - flutter-localization
+  - flutter-routing-and-navigation
+  - flutter-theming
 google-gemini/gemini-skills:
 firebase/agent-skills:
 kevmoo/dash_skills:
