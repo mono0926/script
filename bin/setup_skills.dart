@@ -236,28 +236,20 @@ Iterable<_SkillEntry> _parseSourceMap(YamlMap map, String? targetPath) sync* {
 
 /// npx skills add コマンドを組み立てる。
 List<String> _buildCommand(_SkillEntry entry) {
-  final args = [
+  return [
     'npx',
     'skills',
     'add',
     entry.source,
-  ];
-
-  if (entry.targetPath == null) {
-    args.add('--global');
-  }
-
-  args.addAll([
+    if (entry.targetPath == null) '--global',
     '--agent',
     'antigravity',
     '-y',
-  ]);
-
-  if (entry.skills.isNotEmpty) {
-    args.addAll(['--skill', ...entry.skills]);
-  }
-
-  return args;
+    if (entry.skills.isNotEmpty) ...[
+      '--skill',
+      ...entry.skills,
+    ],
+  ];
 }
 
 class _SkillEntry {
