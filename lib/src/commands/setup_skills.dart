@@ -89,37 +89,153 @@ class SetupSkillsCommand extends Command<int> {
     }
 
     final results = <ProcessResult>[];
-    final progress = dryRun ? null : logger.progress('インストールを実行中...');
 
+    // --- Before Lock ---
+    Map<String, dynamic> readLock(String? path) {
+      final lockPath = path == null
+          ? _expandPath('~/.agents/.skill-lock.json')
+          : '${_expandPath(path)}/skills-lock.json';
+      final file = File(lockPath);
+      if (!file.existsSync()) {
+        return {
+          'version': 3,
+          'skills': <String, dynamic>{},
+          'dismissed': <String, dynamic>{},
+        };
+      }
+      try {
+        return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      } on Exception catch (_) {
+        return {
+          'version': 3,
+          'skills': <String, dynamic>{},
+          'dismissed': <String, dynamic>{},
+        };
+      }
+    }
+
+    void writeLock(String? path, Map<String, dynamic> data) {
+      final lockPath = path == null
+          ? _expandPath('~/.agents/.skill-lock.json')
+          : '${_expandPath(path)}/skills-lock.json';
+      final file = File(lockPath);
+      if (!file.parent.existsSync()) {
+        file.parent.createSync(recursive: true);
+      }
+      file.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(data));
+    }
+
+    final beforeLocks = <String?, Map<String, dynamic>>{};
+    for (final path in validPaths) {
+      beforeLocks[path] = readLock(path);
+    }
+
+    final progress = dryRun ? null : logger.progress('インストールを実行中(並列)...');
+
+    // --- Parallel Install ---
+    final futures = <Future<ProcessResult>>[];
     for (final entry in entries) {
       if (entry.targetPath != null && skippedPaths.contains(entry.targetPath)) {
         continue;
       }
-
       final workingDirectory = entry.targetPath != null
           ? _expandPath(entry.targetPath!)
           : null;
-
       final command = _buildCommand(entry);
-      final commandStr = command.join(' ');
 
       if (dryRun) {
         final wdStr = workingDirectory != null ? ' (in $workingDirectory)' : '';
-        logger.info('$commandStr$wdStr');
+        logger.info('${command.join(' ')}$wdStr');
         continue;
       }
 
-      // インストール実行
-      final result = await Process.run(
-        command.first,
-        command.sublist(1),
-        runInShell: true,
-        workingDirectory: workingDirectory,
+      futures.add(
+        Process.run(
+          command.first,
+          command.sublist(1),
+          runInShell: true,
+          workingDirectory: workingDirectory,
+        ).then((r) {
+          results.add(r);
+          return r;
+        }),
       );
-      results.add(result);
     }
 
     if (!dryRun) {
+      await Future.wait(futures);
+    }
+
+    // --- Merge & Fix Locks ---
+    if (!dryRun) {
+      final afterLocks = <String?, Map<String, dynamic>>{};
+      for (final path in validPaths) {
+        afterLocks[path] = readLock(path);
+      }
+
+      for (final path in validPaths) {
+        final before = beforeLocks[path]!;
+        final after = afterLocks[path]!;
+        final targetEntries = entries
+            .where((e) => e.targetPath == path)
+            .toList();
+
+        final allPossible = <String, dynamic>{
+          ...(before['skills'] as Map<String, dynamic>? ?? <String, dynamic>{}),
+          ...(after['skills'] as Map<String, dynamic>? ?? <String, dynamic>{}),
+        };
+
+        final mergedSkills = <String, dynamic>{};
+        for (final skillName in allPossible.keys) {
+          final skillData = allPossible[skillName] as Map<String, dynamic>;
+          final source = skillData['source'] as String?;
+          final matchingEntry = targetEntries
+              .where((e) => e.source == source)
+              .firstOrNull;
+          if (matchingEntry != null) {
+            if (matchingEntry.skills.isEmpty ||
+                matchingEntry.skills.contains(skillName)) {
+              mergedSkills[skillName] = skillData;
+            }
+          }
+        }
+
+        // Write the merged lock to disk for this path
+        final finalLock = <String, dynamic>{
+          'version': before['version'] ?? 3,
+          'skills': mergedSkills,
+          'dismissed': <String, dynamic>{},
+        };
+        writeLock(path, finalLock);
+
+        // Check for completely missing entries
+        // (lost in race & not in before lock)
+        for (final entry in targetEntries) {
+          var satisfied = false;
+          if (entry.skills.isNotEmpty) {
+            satisfied = entry.skills.every(
+              (s) => mergedSkills.keys.contains(s),
+            );
+          } else {
+            satisfied = mergedSkills.values.any(
+              (s) => (s as Map<String, dynamic>)['source'] == entry.source,
+            );
+          }
+
+          if (!satisfied) {
+            // Install sequentially to fix the missing skills
+            final workingDirectory = path != null ? _expandPath(path) : null;
+            final command = _buildCommand(entry);
+            final r = await Process.run(
+              command.first,
+              command.sublist(1),
+              runInShell: true,
+              workingDirectory: workingDirectory,
+            );
+            results.add(r);
+          }
+        }
+      }
       progress?.complete('インストール処理が完了しました');
 
       for (final result in results) {
