@@ -88,7 +88,8 @@ class SetupSkillsCommand extends Command<int> {
       logger.success('既存のスキル削除完了\n');
     }
 
-    final futures = <Future<ProcessResult>>[];
+    final results = <ProcessResult>[];
+    final progress = dryRun ? null : logger.progress('インストールを実行中...');
 
     for (final entry in entries) {
       if (entry.targetPath != null && skippedPaths.contains(entry.targetPath)) {
@@ -108,25 +109,18 @@ class SetupSkillsCommand extends Command<int> {
         continue;
       }
 
-      logger.info(
-        '📦 $commandStr'
-        '${workingDirectory != null ? ' (in ${entry.targetPath})' : ''}',
+      // インストール実行
+      final result = await Process.run(
+        command.first,
+        command.sublist(1),
+        runInShell: true,
+        workingDirectory: workingDirectory,
       );
-
-      futures.add(
-        Process.run(
-          command.first,
-          command.sublist(1),
-          runInShell: true,
-          workingDirectory: workingDirectory,
-        ),
-      );
+      results.add(result);
     }
 
     if (!dryRun) {
-      final progress = logger.progress('インストールを実行中...');
-      final results = await Future.wait(futures);
-      progress.complete('インストール処理が完了しました');
+      progress?.complete('インストール処理が完了しました');
 
       for (final result in results) {
         if (result.stdout.toString().isNotEmpty) {
@@ -140,9 +134,7 @@ class SetupSkillsCommand extends Command<int> {
           hasError = true;
         }
       }
-    }
 
-    if (!dryRun) {
       if (hasError) {
         logger.warn('\n⚠️  一部のスキルでエラーが発生しました');
       } else {
