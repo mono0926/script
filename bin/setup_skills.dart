@@ -28,19 +28,46 @@ void main(List<String> arguments) async {
 
   var hasError = false;
   final skippedPaths = <String>[];
-  final installedSkills = <String?, List<_SkillEntry>>{};
+  final validPaths = <String?>{null}; // null は global を表す
 
+  // 事前に有効なパスを収集
   for (final entry in entries) {
-    String? workingDirectory;
     if (entry.targetPath != null) {
-      workingDirectory = _expandPath(entry.targetPath!);
-      if (!Directory(workingDirectory).existsSync()) {
+      final expandedPath = _expandPath(entry.targetPath!);
+      if (Directory(expandedPath).existsSync()) {
+        validPaths.add(entry.targetPath);
+      } else {
         if (!skippedPaths.contains(entry.targetPath)) {
           skippedPaths.add(entry.targetPath!);
         }
-        continue;
       }
     }
+  }
+
+  if (!dryRun) {
+    logger.info('=== 既存のスキルを削除しています ===');
+    for (final path in validPaths) {
+      final targetDir = path == null
+          ? _expandPath('~/.agents/skills')
+          : '${_expandPath(path)}/.agents/skills';
+
+      final dir = Directory(targetDir);
+      if (dir.existsSync()) {
+        logger.info('🗑️  $targetDir');
+        dir.deleteSync(recursive: true);
+      }
+    }
+    logger.info('✅ 削除完了\n');
+  }
+
+  for (final entry in entries) {
+    if (entry.targetPath != null && skippedPaths.contains(entry.targetPath)) {
+      continue;
+    }
+
+    final workingDirectory = entry.targetPath != null
+        ? _expandPath(entry.targetPath!)
+        : null;
 
     final command = _buildCommand(entry);
     final commandStr = command.join(' ');
@@ -48,7 +75,6 @@ void main(List<String> arguments) async {
     if (dryRun) {
       final wdStr = workingDirectory != null ? ' (in $workingDirectory)' : '';
       logger.info('$commandStr$wdStr');
-      installedSkills.putIfAbsent(entry.targetPath, () => []).add(entry);
       continue;
     }
 
@@ -67,8 +93,6 @@ void main(List<String> arguments) async {
     if (exitCode != 0) {
       logger.warning('⚠️  終了コード: $exitCode');
       hasError = true;
-    } else {
-      installedSkills.putIfAbsent(entry.targetPath, () => []).add(entry);
     }
   }
 
@@ -80,16 +104,34 @@ void main(List<String> arguments) async {
     }
   }
 
-  if (installedSkills.isNotEmpty) {
+  if (!dryRun) {
     logger.info('\n=== インストール結果一覧 ===');
-    for (final mapEntry in installedSkills.entries) {
-      final target = mapEntry.key ?? 'global';
-      logger.info('📍 $target:');
-      for (final skillEntry in mapEntry.value) {
-        final skillStr = skillEntry.skills.isEmpty
-            ? skillEntry.source
-            : '${skillEntry.source} (${skillEntry.skills.join(', ')})';
-        logger.info('  - $skillStr');
+    for (final path in validPaths) {
+      final targetName = path ?? 'global';
+      final targetDir = path == null
+          ? _expandPath('~/.agents/skills')
+          : '${_expandPath(path)}/.agents/skills';
+
+      final dir = Directory(targetDir);
+      final installedSkills = <String>[];
+
+      if (dir.existsSync()) {
+        for (final entity in dir.listSync()) {
+          if (entity is Directory) {
+            installedSkills.add(entity.path.split(Platform.pathSeparator).last);
+          }
+        }
+      }
+
+      if (installedSkills.isNotEmpty) {
+        installedSkills.sort();
+        logger.info('📍 $targetName:');
+        for (final skill in installedSkills) {
+          logger.info('  - $skill');
+        }
+      } else {
+        // dryRunではないのに空の場合のみ出力
+        logger.info('📍 $targetName: (インストールされたスキルはありません)');
       }
     }
   }
