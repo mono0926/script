@@ -63,7 +63,9 @@ void main(List<String> arguments) async {
 
   Set<String> getSkillDirectories(String targetDir) {
     final dir = Directory(targetDir);
-    if (!dir.existsSync()) return {};
+    if (!dir.existsSync()) {
+      return {};
+    }
     return dir
         .listSync()
         .whereType<Directory>()
@@ -96,7 +98,8 @@ void main(List<String> arguments) async {
     final beforeDirs = dryRun ? <String>{} : getSkillDirectories(targetDir);
 
     logger.info(
-      '\n📦 $commandStr${workingDirectory != null ? ' (in ${entry.targetPath})' : ''}',
+      '\n📦 $commandStr'
+      '${workingDirectory != null ? ' (in ${entry.targetPath})' : ''}',
     );
     final process = await Process.start(
       command.first,
@@ -199,7 +202,9 @@ List<_SkillEntry> _parseSkillEntries(YamlMap yaml) {
   }
 
   for (final MapEntry(key: pathStr, value: pathValue) in yaml.entries) {
-    if (pathStr == 'global') continue;
+    if (pathStr == 'global') {
+      continue;
+    }
 
     if (pathStr is! String || pathValue is! YamlMap) {
       logger.warning('トップレベルの $pathStr が不正な形式です');
