@@ -10,8 +10,6 @@ import 'package:yaml/yaml.dart';
 ///   dart run :setup_skills          # 実行
 ///   dart run :setup_skills --dry-run # コマンド確認のみ
 void main(List<String> arguments) async {
-  setupLogger();
-
   final parser = ArgParser()
     ..addFlag('help', abbr: 'h', negatable: false, help: 'ヘルプを表示します')
     ..addFlag('dry-run', negatable: false, help: 'コマンド確認のみ行います');
