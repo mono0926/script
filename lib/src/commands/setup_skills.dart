@@ -88,8 +88,6 @@ class SetupSkillsCommand extends Command<int> {
       logger.success('既存のスキル削除完了\n');
     }
 
-    final results = <ProcessResult>[];
-
     // --- Before Lock ---
     Map<String, dynamic> readLock(String? path) {
       final lockPath = path == null
@@ -133,11 +131,13 @@ class SetupSkillsCommand extends Command<int> {
     final progress = dryRun ? null : logger.progress('インストールを実行中(並列)...');
 
     // --- Parallel Install ---
+    final activeEntries = <_SkillEntry>[];
     final futures = <Future<ProcessResult>>[];
     for (final entry in entries) {
       if (entry.targetPath != null && skippedPaths.contains(entry.targetPath)) {
         continue;
       }
+      activeEntries.add(entry);
       final workingDirectory = entry.targetPath != null
           ? _expandPath(entry.targetPath!)
           : null;
@@ -155,30 +155,38 @@ class SetupSkillsCommand extends Command<int> {
           command.sublist(1),
           runInShell: true,
           workingDirectory: workingDirectory,
-        ).then((r) {
-          results.add(r);
-          return r;
-        }),
+        ),
       );
     }
 
     if (!dryRun) {
-      await Future.wait(futures);
-    }
+      final results = await Future.wait(futures);
 
-    // --- Merge & Fix Locks ---
-    if (!dryRun) {
+      // --- Merge & Fix Locks via Output Parsing ---
       final afterLocks = <String?, Map<String, dynamic>>{};
       for (final path in validPaths) {
         afterLocks[path] = readLock(path);
       }
 
+      var hasError = false;
+      for (final result in results) {
+        final stdoutStr = result.stdout.toString();
+        final stderrStr = result.stderr.toString();
+        if (stdoutStr.isNotEmpty) {
+          logger.info(stdoutStr.trim());
+        }
+        if (stderrStr.isNotEmpty) {
+          logger.warn(stderrStr.trim());
+        }
+        if (result.exitCode != 0) {
+          logger.warn('⚠️  終了コード: ${result.exitCode}');
+          hasError = true;
+        }
+      }
+
       for (final path in validPaths) {
         final before = beforeLocks[path]!;
         final after = afterLocks[path]!;
-        final targetEntries = entries
-            .where((e) => e.targetPath == path)
-            .toList();
 
         final allPossible = <String, dynamic>{
           ...(before['skills'] as Map<String, dynamic>? ?? <String, dynamic>{}),
@@ -186,17 +194,31 @@ class SetupSkillsCommand extends Command<int> {
         };
 
         final mergedSkills = <String, dynamic>{};
-        for (final skillName in allPossible.keys) {
-          final skillData = allPossible[skillName] as Map<String, dynamic>;
-          final source = skillData['source'] as String?;
-          final matchingEntry = targetEntries
-              .where((e) => e.source == source)
-              .firstOrNull;
-          if (matchingEntry != null) {
-            if (matchingEntry.skills.isEmpty ||
-                matchingEntry.skills.contains(skillName)) {
-              mergedSkills[skillName] = skillData;
-            }
+
+        for (var i = 0; i < activeEntries.length; i++) {
+          final entry = activeEntries[i];
+          if (entry.targetPath != path) {
+            continue;
+          }
+
+          final result = results[i];
+          if (result.exitCode != 0) {
+            continue; // Skip failed installations
+          }
+
+          final stdoutStr = result.stdout.toString();
+          final regex = RegExp(r'\.agents/skills/([\w\-]+)');
+          final matches = regex.allMatches(stdoutStr);
+          final extractedSkills = matches.map((m) => m.group(1)!).toSet()
+            ..addAll(entry.skills);
+
+          for (final skill in extractedSkills) {
+            final existing = allPossible[skill] as Map<String, dynamic>?;
+            mergedSkills[skill] = <String, dynamic>{
+              'source': entry.source,
+              'sourceType': existing?['sourceType'] ?? 'github',
+              'computedHash': existing?['computedHash'] ?? '',
+            };
           }
         }
 
@@ -207,49 +229,8 @@ class SetupSkillsCommand extends Command<int> {
           'dismissed': <String, dynamic>{},
         };
         writeLock(path, finalLock);
-
-        // Check for completely missing entries
-        // (lost in race & not in before lock)
-        for (final entry in targetEntries) {
-          var satisfied = false;
-          if (entry.skills.isNotEmpty) {
-            satisfied = entry.skills.every(
-              (s) => mergedSkills.keys.contains(s),
-            );
-          } else {
-            satisfied = mergedSkills.values.any(
-              (s) => (s as Map<String, dynamic>)['source'] == entry.source,
-            );
-          }
-
-          if (!satisfied) {
-            // Install sequentially to fix the missing skills
-            final workingDirectory = path != null ? _expandPath(path) : null;
-            final command = _buildCommand(entry);
-            final r = await Process.run(
-              command.first,
-              command.sublist(1),
-              runInShell: true,
-              workingDirectory: workingDirectory,
-            );
-            results.add(r);
-          }
-        }
       }
       progress?.complete('インストール処理が完了しました');
-
-      for (final result in results) {
-        if (result.stdout.toString().isNotEmpty) {
-          logger.info((result.stdout as String).trim());
-        }
-        if (result.stderr.toString().isNotEmpty) {
-          logger.warn((result.stderr as String).trim());
-        }
-        if (result.exitCode != 0) {
-          logger.warn('⚠️  終了コード: ${result.exitCode}');
-          hasError = true;
-        }
-      }
 
       if (hasError) {
         logger.warn('\n⚠️  一部のスキルでエラーが発生しました');
