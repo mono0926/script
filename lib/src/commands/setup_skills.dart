@@ -221,8 +221,23 @@ class SetupSkillsCommand extends Command<int> {
           final stdoutStr = result.stdout.toString();
           final regex = RegExp(r'\.agents/skills/([\w\-]+)');
           final matches = regex.allMatches(stdoutStr);
-          final extractedSkills = matches.map((m) => m.group(1)!).toSet()
+          var extractedSkills = matches.map((m) => m.group(1)!).toSet()
             ..addAll(entry.skills);
+
+          if (entry.excludes.isNotEmpty) {
+            extractedSkills = extractedSkills.difference(
+              entry.excludes.toSet(),
+            );
+            for (final exclude in entry.excludes) {
+              final excludePath = entry.targetPath == null
+                  ? _expandPath('~/.agents/skills/$exclude')
+                  : '${_expandPath(entry.targetPath!)}/.agents/skills/$exclude';
+              final excludeDir = Directory(excludePath);
+              if (excludeDir.existsSync()) {
+                excludeDir.deleteSync(recursive: true);
+              }
+            }
+          }
 
           for (final skill in extractedSkills) {
             final existing = allPossible[skill] as Map<String, dynamic>?;
@@ -406,17 +421,30 @@ class SetupSkillsCommand extends Command<int> {
 
       final source = key;
       final skills = <String>[];
+      final excludes = <String>[];
 
       if (value is YamlList) {
         for (final skill in value) {
           skills.add(skill as String);
+        }
+      } else if (value is YamlMap) {
+        final excludesList = value['excludes'];
+        if (excludesList is YamlList) {
+          for (final exclude in excludesList) {
+            excludes.add(exclude as String);
+          }
         }
       } else if (value != null) {
         logger.warn('不正な値をスキップ ($source): $value');
         continue;
       }
 
-      yield _SkillEntry(source: source, skills: skills, targetPath: targetPath);
+      yield _SkillEntry(
+        source: source,
+        skills: skills,
+        excludes: excludes,
+        targetPath: targetPath,
+      );
     }
   }
 
@@ -442,10 +470,12 @@ class _SkillEntry {
   _SkillEntry({
     required this.source,
     this.skills = const [],
+    this.excludes = const [],
     this.targetPath,
   });
 
   final String source;
   final List<String> skills;
+  final List<String> excludes;
   final String? targetPath;
 }

@@ -9,13 +9,9 @@ global:
 
   # 個別インストールの場合はリストを書く
   https://github.com/flutter/skills/tree/generate-skills:
-    - flutter-accessibility
-    - flutter-animation
-    - flutter-environment-setup-macos
-    - flutter-layout
-    - flutter-localization
-    - flutter-routing-and-navigation
-    - flutter-theming
+    excludes:
+      - flutter-architecture
+      - flutter-state-management
   sickn33/antigravity-awesome-skills:
     - typescript-expert
   github/awesome-copilot:
