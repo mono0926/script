@@ -20,10 +20,12 @@ global:
     - '!flutter-architecture' # 既存アーキテクチャに特化するため
     - '!flutter-state-management' # 既存アーキテクチャに特化するため
     - '!flutter-animation' # flutter-animations との重複を避けるため
-    - '!flutter-routing-and-navigation' # flutter-navigation との重複を避けるため
-    - '!flutter-localization' # flutter-internationalization との重複を避けるため
+    - '!flutter-localization' # flutter-internationalization を優先するため
     - '!flutter-environment-setup-linux' # macOS環境では不要なため
     - '!flutter-environment-setup-windows' # macOS環境では不要なため
+    - '!flutter-http-and-json' # flutter-networking との重複を避けるため
+    - '!flutter-databases' # flutter-drift 等の特化型があるため
+    - '!flutter-duit-bdui' # BDUI実装時以外は不要なため
   sickn33/antigravity-awesome-skills:
     - typescript-expert
   github/awesome-copilot:
@@ -47,7 +49,6 @@ global:
   juparave/dotfiles:
     - flutter-riverpod-expert
   wshobson/agents:
-    - api-design-principles
     - nodejs-backend-patterns
     - design-system-patterns
     - mobile-android-design
@@ -55,8 +56,7 @@ global:
     - responsive-design
   madteacher/mad-agents-skills:
     - '*'
-    - '!flutter-navigation' # 重複排除のため
-    - '!flutter-internationalization' # 重複排除のため
+    - '!flutter-navigation' # flutter-routing-and-navigation を優先するため
   # 重複気味
   # jeffallan/claude-skills:
   #   - flutter-expert
