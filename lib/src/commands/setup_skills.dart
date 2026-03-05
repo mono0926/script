@@ -236,7 +236,6 @@ class SetupSkillsCommand extends Command<int> {
 
         final addedSkills = <String, String>{};
         final removedSkills = <String, String>{};
-        final updatedSkills = <String, String>{};
 
         final beforeSkills = before['skills'] as Map<String, dynamic>? ?? {};
 
@@ -247,14 +246,6 @@ class SetupSkillsCommand extends Command<int> {
               'unknown';
           if (!beforeSkills.containsKey(skill)) {
             addedSkills[skill] = afterSource;
-          } else {
-            final beforeSource =
-                (beforeSkills[skill] as Map<String, dynamic>)['source']
-                    as String? ??
-                'unknown';
-            if (beforeSource != afterSource) {
-              updatedSkills[skill] = '$beforeSource -> $afterSource';
-            }
           }
         }
         for (final skill in beforeSkills.keys) {
@@ -269,7 +260,6 @@ class SetupSkillsCommand extends Command<int> {
         diffs[path] = {
           'added': addedSkills,
           'removed': removedSkills,
-          'updated': updatedSkills,
         };
 
         // Write the merged lock to disk for this path
@@ -336,9 +326,8 @@ class SetupSkillsCommand extends Command<int> {
         final pathDiff = diffs[path] ?? {};
         final added = pathDiff['added'] ?? {};
         final removed = pathDiff['removed'] ?? {};
-        final updated = pathDiff['updated'] ?? {};
 
-        if (added.isNotEmpty || removed.isNotEmpty || updated.isNotEmpty) {
+        if (added.isNotEmpty || removed.isNotEmpty) {
           logger.info('\n    [前回の状態からの変更点]');
           if (added.isNotEmpty) {
             final sortedAdded = added.keys.toList()..sort();
@@ -350,12 +339,6 @@ class SetupSkillsCommand extends Command<int> {
             final sortedRemoved = removed.keys.toList()..sort();
             for (final skill in sortedRemoved) {
               logger.info('    🗑️  削除: $skill (${removed[skill]})');
-            }
-          }
-          if (updated.isNotEmpty) {
-            final sortedUpdated = updated.keys.toList()..sort();
-            for (final skill in sortedUpdated) {
-              logger.info('    🔄 更新(取得元変更): $skill (${updated[skill]})');
             }
           }
         } else {

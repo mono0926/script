@@ -4,6 +4,7 @@ global:
   google-gemini/gemini-skills:
   firebase/agent-skills:
   kevmoo/dash_skills:
+  googleworkspace/cli:
 
   # 個別インストールの場合はリストを書く
   https://github.com/flutter/skills/tree/generate-skills:
