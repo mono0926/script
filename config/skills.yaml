@@ -54,15 +54,9 @@ global:
     - mobile-ios-design
     - responsive-design
   madteacher/mad-agents-skills:
-    - dart-drift
-    - flutter-adaptive-ui
-    - flutter-animations
-    # - flutter-architecture
-    - flutter-drift
-    - flutter-internationalization
-    - flutter-navigation
-    - flutter-networking
-    - flutter-testing
+    - '*'
+    - '!flutter-navigation'
+    - '!flutter-internationalization'
   # 重複気味
   # jeffallan/claude-skills:
   #   - flutter-expert
