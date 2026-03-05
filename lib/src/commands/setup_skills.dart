@@ -15,7 +15,15 @@ class SetupSkillsCommand extends Command<int> {
   }
 
   @override
-  String get description => 'skills.yaml を読み込み、各スキルをインストールします';
+  String get description => '''
+skills.yaml を読み込み、各スキルをインストールします。
+
+スキルの指定方法:
+  - 全インストール: スキーマ名の後に何も書かない、あるいは空リスト `[]` を指定します。
+  - 個別指定: インストールしたいスキル名をリストで記述します。
+  - ワイルドカード指定: `*` を含むパターンを記述すると、合致する全スキルを対象にします (例: `*calendar*`)。
+  - 除外指定: `!` プレフィックスを使用すると、そのパターンに合致するスキルを除外します (例: `!recipe-*`)。
+''';
 
   @override
   String get name => 'setup_skills';
@@ -186,7 +194,9 @@ class SetupSkillsCommand extends Command<int> {
         continue;
       }
 
-      progress.complete('🔍 ${matchedSkills.length} 個のスキルが見つかりました');
+      progress.complete(
+        '🔍 $targetName (${entry.source}) で ${matchedSkills.length} 個のスキルが見つかりました',
+      );
 
       resolvedEntries.add(
         _SkillEntry(
@@ -249,6 +259,7 @@ class SetupSkillsCommand extends Command<int> {
         afterLocks[path] = readLock(path);
       }
 
+      // 各プロセスの結果（exitCode, stdout, stderr）を収集・出力
       var hasError = false;
       for (final result in results) {
         final stdoutStr = result.stdout.toString();
@@ -269,6 +280,7 @@ class SetupSkillsCommand extends Command<int> {
         final before = beforeLocks[path]!;
         final after = afterLocks[path]!;
 
+        // インストール前後、および各並列プロセス後のロック情報をマージ
         final allPossible = <String, dynamic>{
           ...(before['skills'] as Map<String, dynamic>? ?? <String, dynamic>{}),
           ...(after['skills'] as Map<String, dynamic>? ?? <String, dynamic>{}),
@@ -483,6 +495,7 @@ class SetupSkillsCommand extends Command<int> {
     return path;
   }
 
+  /// skills.yaml の内容を解析し、プログラムで扱いやすい [_SkillEntry] のリストに変換します。
   List<_SkillEntry> _parseSkillEntries(YamlMap yaml) {
     final entries = <_SkillEntry>[];
 
@@ -507,6 +520,7 @@ class SetupSkillsCommand extends Command<int> {
     return entries;
   }
 
+  /// 特定のパス（global または特定ディレクトリ）配下のリポジトリ設定を解析します。
   Iterable<_SkillEntry> _parseSourceMap(
     YamlMap map,
     String? targetPath,
@@ -544,19 +558,6 @@ class SetupSkillsCommand extends Command<int> {
         for (final item in value) {
           processValue(item);
         }
-      } else if (value is YamlMap) {
-        final excludesList = value['excludes'];
-        if (excludesList is YamlList) {
-          for (final exclude in excludesList) {
-            if (exclude is String) {
-              if (exclude.contains('*')) {
-                excludePatterns.add(exclude);
-              } else {
-                excludes.add(exclude);
-              }
-            }
-          }
-        }
       } else if (value != null) {
         logger.warn('不正な値をスキップ ($source): $value');
         continue;
@@ -590,6 +591,8 @@ class SetupSkillsCommand extends Command<int> {
     ];
   }
 
+  /// `npx skills add <source> --list` の出力からスキル名を抽出します。
+  /// ANSI エスケープシーケンスの除去と、各種出力形式（テーブル枠、リスト記号など）への対応を行っています。
   List<String> _extractSkillNames(String output) {
     // ANSI エスケープシーケンスを削除
     final cleanOutput = output.replaceAll(

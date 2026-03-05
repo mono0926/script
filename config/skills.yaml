@@ -2,29 +2,28 @@ global:
   # 全スキルインストールの場合は空リストにする
   mono0926/skills:
   google-gemini/gemini-skills:
+    - '*'
+    - '!gemini-api-dev'
   google-gemini/gemini-cli:
+    - '*'
+    - '!pirate-skill'
   firebase/agent-skills:
   kevmoo/dash_skills:
-  googleworkspace/cli:
-    - '*calendar*'
-    - '*docs*'
-    - '*drive*'
-    - '*forms*'
-    - '*gmail*'
-    - '*keep*'
-    - '*meet*'
-    - '*people*'
-    - '*sheets*'
-    - '*slides*'
-    - '*tasks*'
-    - '*workflow*'
+    - '*'
+    - '!dart-checks-migration'
+    - '!dart-matcher-best-practices'
   # openclaw/openclaw:
 
   # 個別インストールの場合はリストを書く
   https://github.com/flutter/skills/tree/generate-skills:
-    excludes:
-      - flutter-architecture
-      - flutter-state-management
+    - '*'
+    - '!flutter-architecture'
+    - '!flutter-state-management'
+    - '!flutter-animation'
+    - '!flutter-routing-and-navigation'
+    - '!flutter-localization'
+    - '!flutter-environment-setup-linux'
+    - '!flutter-environment-setup-windows'
   sickn33/antigravity-awesome-skills:
     - typescript-expert
   github/awesome-copilot:
@@ -73,3 +72,18 @@ global:
 # 存在しないパスはエラーを出さずにスキップされます。
 ~/Git/tax-return:
   kazukinagata/shinkoku:
+
+~/Git/gws:
+  googleworkspace/cli:
+    - '*calendar*'
+    - '*docs*'
+    - '*drive*'
+    - '*forms*'
+    - '*gmail*'
+    - '*keep*'
+    - '*meet*'
+    - '*people*'
+    - '*sheets*'
+    - '*slides*'
+    - '*tasks*'
+    - '*workflow*'
