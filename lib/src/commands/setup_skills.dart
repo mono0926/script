@@ -130,12 +130,81 @@ class SetupSkillsCommand extends Command<int> {
       logger.success('既存のスキル削除完了\n');
     }
 
+    // --- Resolve Patterns ---
+    final resolvedEntries = <_SkillEntry>[];
+    for (final entry in entries) {
+      if (entry.patterns.isEmpty) {
+        resolvedEntries.add(entry);
+        continue;
+      }
+
+      final targetName = entry.targetPath ?? 'global';
+      final progress = logger.progress(
+        '🔍 $targetName の利用可能なスキルを確認中 (${entry.source})...',
+      );
+
+      final listResult = await Process.run(
+        'npx',
+        ['skills', 'add', entry.source, '--list'],
+        runInShell: true,
+      );
+
+      if (listResult.exitCode != 0) {
+        progress.fail('❌ スキルリストの取得に失敗しました: ${entry.source}');
+        resolvedEntries.add(entry);
+        continue;
+      }
+
+      final availableSkills = _extractSkillNames(listResult.stdout.toString());
+      final matchedSkills = <String>{...entry.skills};
+
+      // 包含パターンの処理
+      for (final pattern in entry.patterns) {
+        final regExp = _patternToRegExp(pattern);
+        for (final skill in availableSkills) {
+          if (regExp.hasMatch(skill)) {
+            matchedSkills.add(skill);
+          }
+        }
+      }
+
+      // 除外パターンの処理 (ワイルドカード)
+      for (final pattern in entry.excludePatterns) {
+        final regExp = _patternToRegExp(pattern);
+        matchedSkills.removeWhere(regExp.hasMatch);
+      }
+
+      // 除外の処理 (完全一致)
+      for (final exclude in entry.excludes) {
+        matchedSkills.remove(exclude);
+      }
+
+      if (matchedSkills.isEmpty) {
+        progress.fail(
+          '⚠️  パターンに合致するスキルが見つかりませんでした: ${entry.patterns.join(', ')}',
+        );
+        continue;
+      }
+
+      progress.complete('🔍 ${matchedSkills.length} 個のスキルが見つかりました');
+
+      resolvedEntries.add(
+        _SkillEntry(
+          source: entry.source,
+          skills: matchedSkills.toList(),
+          excludes: entry.excludes,
+          excludePatterns: entry.excludePatterns,
+          targetPath: entry.targetPath,
+        ),
+      );
+    }
+
     final progress = dryRun ? null : logger.progress('インストールを実行中(並列)...');
 
     // --- Parallel Install ---
     final activeEntries = <_SkillEntry>[];
     final futures = <Future<ProcessResult>>[];
-    for (final entry in entries) {
+    for (final entry in resolvedEntries) {
       if (entry.targetPath != null && skippedPaths.contains(entry.targetPath)) {
         continue;
       }
@@ -224,17 +293,46 @@ class SetupSkillsCommand extends Command<int> {
           var extractedSkills = matches.map((m) => m.group(1)!).toSet()
             ..addAll(entry.skills);
 
-          if (entry.excludes.isNotEmpty) {
-            extractedSkills = extractedSkills.difference(
-              entry.excludes.toSet(),
-            );
+          if (entry.excludes.isNotEmpty || entry.excludePatterns.isNotEmpty) {
+            final allExcludeRegExps = [
+              ...entry.excludePatterns.map(_patternToRegExp),
+            ];
+
+            extractedSkills = extractedSkills.where((skill) {
+              if (entry.excludes.contains(skill)) return false;
+              for (final regex in allExcludeRegExps) {
+                if (regex.hasMatch(skill)) return false;
+              }
+              return true;
+            }).toSet();
+
+            // 念のため、マッチした（除外されるべき）ディレクトリを削除
             for (final exclude in entry.excludes) {
-              final excludePath = entry.targetPath == null
-                  ? _expandPath('~/.agents/skills/$exclude')
-                  : '${_expandPath(entry.targetPath!)}/.agents/skills/$exclude';
-              final excludeDir = Directory(excludePath);
-              if (excludeDir.existsSync()) {
-                excludeDir.deleteSync(recursive: true);
+              _deleteSkillDir(entry, exclude);
+            }
+            // ワイルドカード除外対象も、もし存在していれば削除
+            final regexes = entry.excludePatterns
+                .map(_patternToRegExp)
+                .toList();
+            if (regexes.isNotEmpty) {
+              final skillDir = entry.targetPath == null
+                  ? _expandPath('~/.agents/skills')
+                  : '${_expandPath(entry.targetPath!)}/.agents/skills';
+              final dir = Directory(skillDir);
+              if (dir.existsSync()) {
+                for (final entity in dir.listSync()) {
+                  if (entity is Directory) {
+                    final skillName = entity.uri.pathSegments
+                        .where((s) => s.isNotEmpty)
+                        .last;
+                    for (final regex in regexes) {
+                      if (regex.hasMatch(skillName)) {
+                        entity.deleteSync(recursive: true);
+                        break;
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -421,17 +519,42 @@ class SetupSkillsCommand extends Command<int> {
 
       final source = key;
       final skills = <String>[];
+      final patterns = <String>[];
       final excludes = <String>[];
+      final excludePatterns = <String>[];
+
+      void processValue(dynamic v) {
+        if (v is String) {
+          if (v.startsWith('!')) {
+            final p = v.substring(1);
+            if (p.contains('*')) {
+              excludePatterns.add(p);
+            } else {
+              excludes.add(p);
+            }
+          } else if (v.contains('*')) {
+            patterns.add(v);
+          } else {
+            skills.add(v);
+          }
+        }
+      }
 
       if (value is YamlList) {
-        for (final skill in value) {
-          skills.add(skill as String);
+        for (final item in value) {
+          processValue(item);
         }
       } else if (value is YamlMap) {
         final excludesList = value['excludes'];
         if (excludesList is YamlList) {
           for (final exclude in excludesList) {
-            excludes.add(exclude as String);
+            if (exclude is String) {
+              if (exclude.contains('*')) {
+                excludePatterns.add(exclude);
+              } else {
+                excludes.add(exclude);
+              }
+            }
           }
         }
       } else if (value != null) {
@@ -442,7 +565,9 @@ class SetupSkillsCommand extends Command<int> {
       yield _SkillEntry(
         source: source,
         skills: skills,
+        patterns: patterns,
         excludes: excludes,
+        excludePatterns: excludePatterns,
         targetPath: targetPath,
       );
     }
@@ -464,18 +589,74 @@ class SetupSkillsCommand extends Command<int> {
       ],
     ];
   }
+
+  List<String> _extractSkillNames(String output) {
+    // ANSI エスケープシーケンスを削除
+    final cleanOutput = output.replaceAll(
+      RegExp(r'\x1B\[[0-?]*[ -/]*[@-~]'),
+      '',
+    );
+
+    // スキル名を抽出
+    final names = <String>{};
+
+    // 形式 1: "│    skill-name" (npx skills add --list)
+    // 形式 2: "│    - skill-name" (エラー時のリスト)
+    // 形式 3: "    - skill-name" (シンプルなリスト)
+    final regex = RegExp(r'(?:│\s{4}|-\s+|│\s+-\s+)([\w\d\-]+)(?:\s|$)');
+    for (final match in regex.allMatches(cleanOutput)) {
+      final name = match.group(1)!;
+      // 名前の長さや形式でノイズ（説明文の単語など）を除去
+      if (name.length > 2 && !name.contains(' ')) {
+        names.add(name);
+      }
+    }
+    return names.toList();
+  }
+
+  RegExp _patternToRegExp(String pattern) {
+    final escaped = pattern
+        .replaceAll('.', r'\.')
+        .replaceAll('+', r'\+')
+        .replaceAll('?', r'\?')
+        .replaceAll('(', r'\(')
+        .replaceAll(')', r'\)')
+        .replaceAll('[', r'\[')
+        .replaceAll(']', r'\]')
+        .replaceAll('{', r'\{')
+        .replaceAll('}', r'\}')
+        .replaceAll('^', r'\^')
+        .replaceAll(r'$', r'\$')
+        .replaceAll('|', r'\|')
+        .replaceAll('*', '.*');
+    return RegExp('^$escaped\$', caseSensitive: false);
+  }
+
+  void _deleteSkillDir(_SkillEntry entry, String skillName) {
+    final excludePath = entry.targetPath == null
+        ? _expandPath('~/.agents/skills/$skillName')
+        : '${_expandPath(entry.targetPath!)}/.agents/skills/$skillName';
+    final excludeDir = Directory(excludePath);
+    if (excludeDir.existsSync()) {
+      excludeDir.deleteSync(recursive: true);
+    }
+  }
 }
 
 class _SkillEntry {
   _SkillEntry({
     required this.source,
     this.skills = const [],
+    this.patterns = const [],
     this.excludes = const [],
+    this.excludePatterns = const [],
     this.targetPath,
   });
 
   final String source;
   final List<String> skills;
+  final List<String> patterns;
   final List<String> excludes;
+  final List<String> excludePatterns;
   final String? targetPath;
 }

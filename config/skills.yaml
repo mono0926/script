@@ -6,6 +6,18 @@ global:
   firebase/agent-skills:
   kevmoo/dash_skills:
   googleworkspace/cli:
+    - '*calendar*'
+    - '*docs*'
+    - '*drive*'
+    - '*forms*'
+    - '*gmail*'
+    - '*keep*'
+    - '*meet*'
+    - '*people*'
+    - '*sheets*'
+    - '*slides*'
+    - '*tasks*'
+    - '*workflow*'
   # openclaw/openclaw:
 
   # 個別インストールの場合はリストを書く
