@@ -55,39 +55,6 @@ class SetupSkillsCommand extends Command<int> {
       }
     }
 
-    if (!dryRun) {
-      logger.info('=== 既存のスキルを削除しています ===');
-      for (final path in validPaths) {
-        final workingDirectory = path != null ? _expandPath(path) : null;
-        final targetName = path ?? 'global';
-        final progress = logger.progress('🗑️  $targetName のスキルを削除中...');
-
-        final command = [
-          'npx',
-          'skills',
-          'remove',
-          '--all',
-          if (path == null) '--global',
-          '-y',
-        ];
-
-        final result = await Process.run(
-          command.first,
-          command.sublist(1),
-          runInShell: true,
-          workingDirectory: workingDirectory,
-        );
-
-        if (result.exitCode == 0) {
-          progress.complete('🗑️  $targetName のスキルを削除しました');
-        } else {
-          progress.fail('🗑️  $targetName のスキル削除に失敗しました\n${result.stderr}');
-          hasError = true;
-        }
-      }
-      logger.success('既存のスキル削除完了\n');
-    }
-
     // --- Before Lock ---
     Map<String, dynamic> readLock(String? path) {
       final lockPath = path == null
@@ -126,6 +93,41 @@ class SetupSkillsCommand extends Command<int> {
     final beforeLocks = <String?, Map<String, dynamic>>{};
     for (final path in validPaths) {
       beforeLocks[path] = readLock(path);
+    }
+
+    final diffs = <String?, Map<String, Map<String, String>>>{};
+
+    if (!dryRun) {
+      logger.info('=== 既存のスキルを削除しています ===');
+      for (final path in validPaths) {
+        final workingDirectory = path != null ? _expandPath(path) : null;
+        final targetName = path ?? 'global';
+        final progress = logger.progress('🗑️  $targetName のスキルを削除中...');
+
+        final command = [
+          'npx',
+          'skills',
+          'remove',
+          '--all',
+          if (path == null) '--global',
+          '-y',
+        ];
+
+        final result = await Process.run(
+          command.first,
+          command.sublist(1),
+          runInShell: true,
+          workingDirectory: workingDirectory,
+        );
+
+        if (result.exitCode == 0) {
+          progress.complete('🗑️  $targetName のスキルを削除しました');
+        } else {
+          progress.fail('🗑️  $targetName のスキル削除に失敗しました\n${result.stderr}');
+          hasError = true;
+        }
+      }
+      logger.success('既存のスキル削除完了\n');
     }
 
     final progress = dryRun ? null : logger.progress('インストールを実行中(並列)...');
@@ -232,6 +234,44 @@ class SetupSkillsCommand extends Command<int> {
           }
         }
 
+        final addedSkills = <String, String>{};
+        final removedSkills = <String, String>{};
+        final updatedSkills = <String, String>{};
+
+        final beforeSkills = before['skills'] as Map<String, dynamic>? ?? {};
+
+        for (final skill in mergedSkills.keys) {
+          final afterSource =
+              (mergedSkills[skill] as Map<String, dynamic>)['source']
+                  as String? ??
+              'unknown';
+          if (!beforeSkills.containsKey(skill)) {
+            addedSkills[skill] = afterSource;
+          } else {
+            final beforeSource =
+                (beforeSkills[skill] as Map<String, dynamic>)['source']
+                    as String? ??
+                'unknown';
+            if (beforeSource != afterSource) {
+              updatedSkills[skill] = '$beforeSource -> $afterSource';
+            }
+          }
+        }
+        for (final skill in beforeSkills.keys) {
+          if (!mergedSkills.containsKey(skill)) {
+            removedSkills[skill] =
+                (beforeSkills[skill] as Map<String, dynamic>)['source']
+                    as String? ??
+                'unknown';
+          }
+        }
+
+        diffs[path] = {
+          'added': addedSkills,
+          'removed': removedSkills,
+          'updated': updatedSkills,
+        };
+
         // Write the merged lock to disk for this path
         final finalLock = <String, dynamic>{
           'version': before['version'] ?? 3,
@@ -291,6 +331,37 @@ class SetupSkillsCommand extends Command<int> {
               logger.info('    - $skill');
             }
           }
+        }
+
+        final pathDiff = diffs[path] ?? {};
+        final added = pathDiff['added'] ?? {};
+        final removed = pathDiff['removed'] ?? {};
+        final updated = pathDiff['updated'] ?? {};
+
+        if (added.isNotEmpty || removed.isNotEmpty || updated.isNotEmpty) {
+          logger.info('\n    [前回の状態からの変更点]');
+          if (added.isNotEmpty) {
+            final sortedAdded = added.keys.toList()..sort();
+            for (final skill in sortedAdded) {
+              logger.info('    ✨ 追加: $skill (${added[skill]})');
+            }
+          }
+          if (removed.isNotEmpty) {
+            final sortedRemoved = removed.keys.toList()..sort();
+            for (final skill in sortedRemoved) {
+              logger.info('    🗑️  削除: $skill (${removed[skill]})');
+            }
+          }
+          if (updated.isNotEmpty) {
+            final sortedUpdated = updated.keys.toList()..sort();
+            for (final skill in sortedUpdated) {
+              logger.info('    🔄 更新(取得元変更): $skill (${updated[skill]})');
+            }
+          }
+        } else {
+          logger
+            ..info('\n    [変更点]')
+            ..info('    🔄 すべての既存スキルを最新状態に同期しました (差分なし)');
         }
       }
     }
