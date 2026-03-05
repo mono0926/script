@@ -3,27 +3,27 @@ global:
   mono0926/skills:
   google-gemini/gemini-skills:
     - '*'
-    - '!gemini-api-dev'
+    - '!gemini-api-dev' # gemini-interactions-api との重複を避けるため
   google-gemini/gemini-cli:
     - '*'
-    - '!pirate-skill'
+    - '!pirate-skill' # ジョークスキルのため
   firebase/agent-skills:
   kevmoo/dash_skills:
     - '*'
-    - '!dart-checks-migration'
-    - '!dart-matcher-best-practices'
+    - '!dart-checks-migration' # 移行完了済みのため
+    - '!dart-matcher-best-practices' # 移行完了済みのため
   # openclaw/openclaw:
 
   # 個別インストールの場合はリストを書く
   https://github.com/flutter/skills/tree/generate-skills:
     - '*'
-    - '!flutter-architecture'
-    - '!flutter-state-management'
-    - '!flutter-animation'
-    - '!flutter-routing-and-navigation'
-    - '!flutter-localization'
-    - '!flutter-environment-setup-linux'
-    - '!flutter-environment-setup-windows'
+    - '!flutter-architecture' # 既存アーキテクチャに特化するため
+    - '!flutter-state-management' # 既存アーキテクチャに特化するため
+    - '!flutter-animation' # flutter-animations との重複を避けるため
+    - '!flutter-routing-and-navigation' # flutter-navigation との重複を避けるため
+    - '!flutter-localization' # flutter-internationalization との重複を避けるため
+    - '!flutter-environment-setup-linux' # macOS環境では不要なため
+    - '!flutter-environment-setup-windows' # macOS環境では不要なため
   sickn33/antigravity-awesome-skills:
     - typescript-expert
   github/awesome-copilot:
@@ -55,8 +55,8 @@ global:
     - responsive-design
   madteacher/mad-agents-skills:
     - '*'
-    - '!flutter-navigation'
-    - '!flutter-internationalization'
+    - '!flutter-navigation' # 重複排除のため
+    - '!flutter-internationalization' # 重複排除のため
   # 重複気味
   # jeffallan/claude-skills:
   #   - flutter-expert
