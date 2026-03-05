@@ -39,8 +39,6 @@ global:
     - skill-creator
   nextlevelbuilder/ui-ux-pro-max-skill:
     - ui-ux-pro-max
-  better-auth/skills:
-    - better-auth-security-best-practices
   obra/superpowers:
     - brainstorming
     - test-driven-development
@@ -57,6 +55,7 @@ global:
   madteacher/mad-agents-skills:
     - '*'
     - '!flutter-navigation' # flutter-routing-and-navigation を優先するため
+
   # 重複気味
   # jeffallan/claude-skills:
   #   - flutter-expert
