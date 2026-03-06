@@ -5,34 +5,24 @@
 
 ## 主要コマンド
 
-### `setup_skills`
+### `skills_sync` (旧 `setup_skills`)
 
-`config/skills.yaml` を読み込み、必要なスキルを一括インストール・同期します。
+`setup_skills` コマンドはより汎用的な **`skills-sync`** ツールとして独立・リリースされました。
+今後のスキルの過不足ない同期・管理には、以下の新しいツールを利用してください。
 
-#### インストール仕様
+- **GitHub**: [mono0926/skills-sync](https://github.com/mono0926/skills-sync)
+- **pub.dev**: [skills_sync](https://pub.dev/packages/skills_sync)
 
-- **ワイルドカード指定**: `*` を含むパターンを記述すると、リポジトリ内の合致するスキルをすべてインストールします。
-- **除外指定**: `!` プレフィックスを使用すると、特定のスキル（またはパターンに一致するもの）をインストール対象から外します。
-- **ロックファイル同期**: インストール状況は `~/.agents/.skill-lock.json`（グローバル）または各ディレクトリの `skills-lock.json` と同期されます。
+#### インストール方法
 
-#### `skills.yaml` の書き方例
-
-```yaml
-global:
-  # 全スキル対象
-  mono0926/skills:
-
-  # 特定コンポーネントのみ（ワイルドカード）
-  googleworkspace/cli:
-    - '*calendar*'
-    - '*docs*'
-
-  # すべて対象だが一部除外
-  firebase/agent-skills:
-    - '*'
-    - '!recipe-*'
-
-  # 個別指定
-  github/awesome-copilot:
-    - gh-cli
+```bash
+dart pub global activate skills_sync
 ```
+
+#### 使い方
+
+```bash
+skills_sync sync
+```
+
+詳細な使い方は、提供されている各ドキュメントを参照してください。

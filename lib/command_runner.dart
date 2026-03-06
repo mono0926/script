@@ -2,16 +2,13 @@ import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
 import 'package:script/exceptions.dart';
 import 'package:script/logger.dart';
-import 'package:script/src/commands/setup_skills.dart';
 
 class ScriptCommandRunner extends CompletionCommandRunner<int> {
   ScriptCommandRunner()
     : super(
         'script',
         '様々なスクリプトの置き場',
-      ) {
-    addCommand(SetupSkillsCommand());
-  }
+      );
 
   @override
   Future<int?> run(Iterable<String> args) async {
