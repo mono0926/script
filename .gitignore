@@ -4,3 +4,8 @@
 
 # firebase
 firebase-debug.log
+
+# python
+.venv/
+*.mid
+midi/*.py
